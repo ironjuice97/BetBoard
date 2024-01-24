@@ -1,5 +1,10 @@
 from flask import request, redirect, url_for, session, jsonify
-from app import oauth, main_blueprint  # Import the 'main_blueprint' from app/__init__.py
+from app import oauth
+
+# Import 'main_blueprint' from the '__init__.py' file
+from app import create_app
+
+app, main_blueprint = create_app()
 
 # Route for initiating the OAuth flow
 @main_blueprint.route('/login')

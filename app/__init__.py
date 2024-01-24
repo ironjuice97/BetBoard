@@ -1,11 +1,12 @@
-from flask import Flask
+from flask import Flask, Blueprint
 from flask_oauthlib.client import OAuth
 import os
 
-# Initialize the Flask app
-def create_app():
-    app = Flask(__name__)
+# Initialize Flask app and OAuth
+app = Flask(__name__)
+oauth = OAuth(app)
 
+def create_app():
     # Load sensitive information from environment variables
     app.config['FANUEL_CONSUMER_KEY'] = os.environ.get('FANUEL_CONSUMER_KEY')
     app.config['FANUEL_CONSUMER_SECRET'] = os.environ.get('FANUEL_CONSUMER_SECRET')
@@ -15,8 +16,8 @@ def create_app():
     if not all([app.config['FANUEL_CONSUMER_KEY'], app.config['FANUEL_CONSUMER_SECRET'], app.secret_key]):
         raise EnvironmentError("Missing required environment variables: FANUEL_CONSUMER_KEY, FANUEL_CONSUMER_SECRET, or FLASK_SECRET_KEY")
 
-    # Initialize OAuth
-    oauth = OAuth(app)
+    # Initialize the global 'oauth' with the app
+    oauth.init_app(app)
 
     # Configure Fanduel OAuth
     fanduel = oauth.remote_app(
@@ -31,8 +32,7 @@ def create_app():
         authorize_url='https://api.fanduel.com/oauth/authorize'
     )
 
-    # Import and register the blueprint from routes.py
-    from app.routes import main as main_blueprint
-    app.register_blueprint(main_blueprint)  # Registers the main_blueprint Blueprint instance with the Flask app
+    # Define the main_blueprint here (outside of the 'create_app' function)
+    main_blueprint = Blueprint('main', __name__)
 
-    return app
+    return app, main_blueprint
