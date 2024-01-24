@@ -1,0 +1,2 @@
+Flask-OAuthlib==0.9.6
+Werkzeug==2.0.2
