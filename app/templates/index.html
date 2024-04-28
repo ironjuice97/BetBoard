@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Betting Data</title>
+</head>
+<body>
+    <h1>Betting Data</h1>
+    <div id="data">
+        <!-- Data will be populated here -->
+    </div>
+    <script>
+        // JavaScript to fetch and display betting data
+        window.onload = function() {
+            fetch('/betting-data')
+                .then(response => response.json())
+                .then(data => {
+                    const dataDiv = document.getElementById('data');
+                    dataDiv.innerHTML = JSON.stringify(data, null, 2);
+                })
+                .catch(error => console.error('Error:', error));
+        };
+    </script>
+</body>
+</html>
+
+
+

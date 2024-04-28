@@ -4,7 +4,7 @@ from app.fanduel import FanduelAPI
 
 @main_blueprint.route('/')
 def home():
-    return "Welcome to the home page!", 200
+    return render_template('homepage.html')
 
 @main_blueprint.route('/login')
 def login():
@@ -39,16 +39,33 @@ def profile():
 @main_blueprint.route('/connect_fanduel', methods=['GET', 'POST'])
 def connect_fanduel():
     if request.method == 'POST':
-        fanduel_username = request.form['fanduel_username']
-        fanduel_password = request.form['fanduel_password']
         fanduel_api = FanduelAPI()
         try:
-            access_token = fanduel_api.authenticate(fanduel_username, fanduel_password)
+            access_token = fanduel_api.authenticate()
             session['fanduel_token'] = access_token
             return redirect(url_for('main.profile'))
         except Exception as e:
             return f"Failed to authenticate with FanDuel: {str(e)}", 500
     return render_template('connect_fanduel.html')
+
+@main_blueprint.route('/betting-data')
+def betting_data():
+    # Simulate some betting data
+    betting_data = [
+        {
+            'username': 'user1',
+            'wins': 10,
+            'losses': 5,
+            'win_percentage': 0.67
+        },
+        {
+            'username': 'user2',
+            'wins': 8,
+            'losses': 7,
+            'win_percentage': 0.53
+        }
+    ]
+    return jsonify(betting_data)
 
 @main_blueprint.route('/leaderboard')
 def leaderboard():
@@ -56,11 +73,10 @@ def leaderboard():
         return redirect(url_for('main.login'))
     fanduel_api = FanduelAPI()
     try:
-        betting_data = fanduel_api.get_betting_history(session['fanduel_token'])
-        # TODO: Process the betting data and generate leaderboard
-        return render_template('leaderboard.html', betting_data=betting_data)
+        contests = fanduel_api.get_contests()
+        # TODO: Process the contests data and generate leaderboard
+        return render_template('leaderboard.html', contests=contests)
     except Exception as e:
-        return f"Failed to retrieve betting data: {str(e)}", 500
+        return f"Failed to retrieve contests data: {str(e)}", 500
     
 
-    

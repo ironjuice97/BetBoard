@@ -29,15 +29,30 @@ class TestFanduelAPI(FlaskTestCase):
     def test_authenticate_success(self, mock_post):
         mock_post.return_value.json.return_value = {'access_token': 'dummy_token'}
         fanduel_api = FanduelAPI()
-        access_token = fanduel_api.authenticate('username', 'password')
+        access_token = fanduel_api.authenticate()
         self.assertEqual(access_token, 'dummy_token')
+
+    @patch('requests.get')
+    def test_get_contests_success(self, mock_get):
+        mock_get.return_value.json.return_value = {'contests': []}
+        fanduel_api = FanduelAPI()
+        contests = fanduel_api.get_contests()
+        self.assertEqual(contests, [])
+
 
     @patch('requests.post')
     def test_authenticate_failure(self, mock_post):
         mock_post.side_effect = requests.RequestException('Authentication failed')
         fanduel_api = FanduelAPI()
         with self.assertRaises(Exception):
-            fanduel_api.authenticate('username', 'password')
+            fanduel_api.authenticate()
+
+    @patch('requests.get')
+    def test_get_contests_failure(self, mock_get):
+        mock_get.side_effect = requests.RequestException('Failed to retrieve contests')
+        fanduel_api = FanduelAPI()
+        with self.assertRaises(Exception):
+            fanduel_api.get_contests()
 
     @patch('requests.get')
     def test_get_betting_history_success(self, mock_get):

@@ -4,28 +4,37 @@ from flask import current_app
 class FanduelAPI:
     def __init__(self):
         self.base_url = "https://api.fanduel.com"
+        self.auth_tokens = {
+            'basic_auth_token': current_app.config['FANUEL_BASIC_AUTH_TOKEN'],
+            'x_auth_token': current_app.config['FANUEL_X_AUTH_TOKEN']
+        }
 
-    def authenticate(self, username, password):
-        try:
-            response = requests.post(f"{self.base_url}/oauth/token", data={
-                "grant_type": "password",
-                "username": username,
-                "password": password,
-                "client_id": current_app.config['FANUEL_CONSUMER_KEY'],
-                "client_secret": current_app.config['FANUEL_CONSUMER_SECRET']
-            })
-            response.raise_for_status()
-            return response.json()['access_token']
-        except requests.RequestException as e:
-            raise Exception(f"FanDuel API authentication failed: {str(e)}")
+    def authenticate(self):
+        headers = {
+            'Authorization': f"Basic {self.auth_tokens['basic_auth_token']}",
+            'X-Auth-Token': self.auth_tokens['x_auth_token']
+        }
+        response = requests.post(f"{self.base_url}/oauth/token", headers=headers)
+        response.raise_for_status()
+        return response.json()['access_token']
 
-    def get_betting_history(self, access_token):
+    def get_auth_header(self):
+        access_token = self.authenticate()
+        return {'Authorization': f"Bearer {access_token}"}
+
+    def get_contests(self):
+        response = requests.get(f"{self.base_url}/contests", headers=self.get_auth_header())
+        response.raise_for_status()
+        return response.json()['contests']
+
+    def safe_request(self, url, headers):
         try:
-            headers = {"Authorization": f"Bearer {access_token}"}
-            response = requests.get(f"{self.base_url}/users/self/betting_history", headers=headers)
+            response = requests.get(url, headers=headers)
             response.raise_for_status()
             return response.json()
-        except requests.RequestException as e:
-            raise Exception(f"Failed to retrieve betting history: {str(e)}")
-        
-        
+        except requests.exceptions.HTTPError as err:
+            print(f"HTTP error occurred: {err}")
+        except Exception as err:
+            print(f"An error occurred: {err}")
+
+            

@@ -7,6 +7,25 @@
 </head>
 <body>
     <h1>Leaderboard</h1>
-    <!-- TODO: Display the leaderboard data -->
+    <table>
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Wins</th>
+                <th>Losses</th>
+                <th>Win Percentage</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in betting_data %}
+            <tr>
+                <td>{{ user.username }}</td>
+                <td>{{ user.wins }}</td>
+                <td>{{ user.losses }}</td>
+                <td>{{ user.win_percentage }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </body>
 </html>
