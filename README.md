@@ -23,7 +23,7 @@ requirements.txt:
 Installation
 To run the BetBoard web application locally, follow these steps:
 
-1. Clone the repository to your local machine: git clone https://github.com/yourusername/BetBoard.git
+1. Clone the repository to your local machine: git clone https://github.com/ironjuice97/BetBoard1.git
 2. Navigate to the project directory: cd BetBoard
 3. Create a virtual environment (recommended) and activate it: python -m venv venv
 source venv/bin/activate

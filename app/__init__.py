@@ -1,38 +1,57 @@
 from flask import Flask, Blueprint
 from flask_oauthlib.client import OAuth
 import os
+from dotenv import load_dotenv
 
-# Initialize Flask app and OAuth
+load_dotenv()
+
 app = Flask(__name__)
 oauth = OAuth(app)
 
+google = None
+fanduel = None
+
 def create_app():
-    # Load sensitive information from environment variables
-    app.config['FANUEL_CONSUMER_KEY'] = os.environ.get('FANUEL_CONSUMER_KEY')
-    app.config['FANUEL_CONSUMER_SECRET'] = os.environ.get('FANUEL_CONSUMER_SECRET')
-    app.secret_key = os.environ.get('FLASK_SECRET_KEY')  # Set a secret key for Flask sessions
+    global google, fanduel
 
-    # Check if the necessary environment variables are set
-    if not all([app.config['FANUEL_CONSUMER_KEY'], app.config['FANUEL_CONSUMER_SECRET'], app.secret_key]):
-        raise EnvironmentError("Missing required environment variables: FANUEL_CONSUMER_KEY, FANUEL_CONSUMER_SECRET, or FLASK_SECRET_KEY")
+    app.config['TESTING'] = True
+    app.config['GOOGLE_CLIENT_ID'] = os.getenv('GOOGLE_CLIENT_ID')
+    app.config['GOOGLE_CLIENT_SECRET'] = os.getenv('GOOGLE_CLIENT_SECRET')
+    app.config['FANUEL_CONSUMER_KEY'] = os.getenv('FANUEL_CONSUMER_KEY', 'default_key')
+    app.config['FANUEL_CONSUMER_SECRET'] = os.getenv('FANUEL_CONSUMER_SECRET', 'default_secret')
+    app.secret_key = os.getenv('FLASK_SECRET_KEY', 'default_secret_key')
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['REMEMBER_COOKIE_HTTPONLY'] = True
 
-    # Initialize the global 'oauth' with the app
-    oauth.init_app(app)
+    if google is None:
+        google = oauth.remote_app(
+            'google',
+            consumer_key=app.config['GOOGLE_CLIENT_ID'],
+            consumer_secret=app.config['GOOGLE_CLIENT_SECRET'],
+            request_token_params={'scope': 'email profile'},
+            base_url='https://www.googleapis.com/oauth2/v1/',
+            request_token_url=None,
+            access_token_method='POST',
+            access_token_url='https://accounts.google.com/o/oauth2/token',
+            authorize_url='https://accounts.google.com/o/oauth2/auth',
+        )
 
-    # Configure Fanduel OAuth
-    fanduel = oauth.remote_app(
-        'fanduel',
-        consumer_key=app.config['FANUEL_CONSUMER_KEY'],
-        consumer_secret=app.config['FANUEL_CONSUMER_SECRET'],
-        request_token_params={'scope': 'email'},
-        base_url='https://api.fanduel.com/',
-        request_token_url=None,
-        access_token_method='POST',
-        access_token_url='https://api.fanduel.com/oauth/token',
-        authorize_url='https://api.fanduel.com/oauth/authorize'
-    )
+    if fanduel is None:
+        fanduel = oauth.remote_app(
+            'fanduel',
+            consumer_key=app.config['FANUEL_CONSUMER_KEY'],
+            consumer_secret=app.config['FANUEL_CONSUMER_SECRET'],
+            request_token_params={'scope': 'email'},
+            base_url='https://api.fanduel.com/',
+            access_token_method='POST',
+            access_token_url='https://api.fanduel.com/oauth/token',
+            authorize_url='https://api.fanduel.com/oauth/authorize'
+        )
 
-    # Define the main_blueprint here (outside of the 'create_app' function)
-    main_blueprint = Blueprint('main', __name__)
+    main_blueprint = Blueprint('main', __name__, template_folder='templates')
+    if 'main' not in app.blueprints:
+        app.register_blueprint(main_blueprint)
 
-    return app, main_blueprint
+    return app
+
+

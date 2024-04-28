@@ -1,64 +1,66 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-from app import oauth, main_blueprint  # Import the Flask app and the OAuth object from app/__init__.py
+from flask import render_template, request, redirect, url_for, session, jsonify
+from app import oauth, main_blueprint, google
+from app.fanduel import FanduelAPI
 
 @main_blueprint.route('/')
 def home():
-    print("Home route accessed")  # Add a debugging message
-    return "Welcome to the home page!"
+    return "Welcome to the home page!", 200
 
-# Route for initiating the OAuth flow
 @main_blueprint.route('/login')
 def login():
-    print("Login route accessed")  # Add a debugging message
-    # Redirect the user to the FanDuel authorization page
-    return oauth.fanduel.authorize_redirect(callback=url_for('main.authorized', _external=True))
+    return google.authorize(callback=url_for('main.authorized', _external=True))
 
-# Route for logging out
 @main_blueprint.route('/logout')
 def logout():
-    print("Logout route accessed")  # Add a debugging message
-    # Clear the FanDuel token from the session
+    session.pop('google_token', None)
     session.pop('fanduel_token', None)
-    return redirect(url_for('main.index'))
+    return redirect(url_for('main.home'))
 
-# Route for handling the OAuth callback
 @main_blueprint.route('/login/authorized')
 def authorized():
-    print("Authorized route accessed")  # Add a debugging message
-    try:
-        # Authorize access and retrieve the access token
-        response = oauth.fanduel.authorize_access_token()
-        session['fanduel_token'] = (response['access_token'], '')
+    resp = google.authorized_response()
+    if resp is None:
+        error_reason = request.args.get('error_reason', 'Unknown')
+        error_description = request.args.get('error_description', 'Unknown')
+        return f"Access denied: reason={error_reason} error={error_description}", 401
+    session['google_token'] = (resp['access_token'], '')
+    return redirect(url_for('main.profile'))
 
-        # Fetch user information from FanDuel after successful OAuth
-        user_info = oauth.fanduel.get('user')
-        if user_info.status_code == 200:
-            user_data = user_info.json()
-            
-            # Store user_data in your application's database or session as needed
-            # Example: session['user_id'] = user_data['id']
+@google.tokengetter
+def get_google_oauth_token():
+    return session.get('google_token')
 
-            # Redirect to the user's profile page
-            return redirect(url_for('main.profile'))
-        else:
-            return "Error fetching user information from FanDuel."
-
-    except Exception as e:
-        return f"OAuth authorization failed: {str(e)}"
-
-# Route for displaying the user's profile
 @main_blueprint.route('/profile')
 def profile():
-    print("Profile route accessed")  # Add a debugging message
-    # Retrieve user information from the session or database
-    # Example: user_id = session.get('user_id')
-    # Fetch user-specific data from your application's database
-    # Example: user_data = fetch_user_data_from_database(user_id)
+    if 'google_token' not in session:
+        return redirect(url_for('main.login'))
+    return render_template('profile.html')
 
-    if 'fanduel_token' in session:
-        # Display a welcome message with the user's name if logged in
-        return f"Welcome to your profile, {session['fanduel_token'][1]}!"  # Use the stored token data
-    else:
-        return "You are not logged in."
+@main_blueprint.route('/connect_fanduel', methods=['GET', 'POST'])
+def connect_fanduel():
+    if request.method == 'POST':
+        fanduel_username = request.form['fanduel_username']
+        fanduel_password = request.form['fanduel_password']
+        fanduel_api = FanduelAPI()
+        try:
+            access_token = fanduel_api.authenticate(fanduel_username, fanduel_password)
+            session['fanduel_token'] = access_token
+            return redirect(url_for('main.profile'))
+        except Exception as e:
+            return f"Failed to authenticate with FanDuel: {str(e)}", 500
+    return render_template('connect_fanduel.html')
 
-# Add more routes and logic as needed
+@main_blueprint.route('/leaderboard')
+def leaderboard():
+    if 'google_token' not in session or 'fanduel_token' not in session:
+        return redirect(url_for('main.login'))
+    fanduel_api = FanduelAPI()
+    try:
+        betting_data = fanduel_api.get_betting_history(session['fanduel_token'])
+        # TODO: Process the betting data and generate leaderboard
+        return render_template('leaderboard.html', betting_data=betting_data)
+    except Exception as e:
+        return f"Failed to retrieve betting data: {str(e)}", 500
+    
+
+    
